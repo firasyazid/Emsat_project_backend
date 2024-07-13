@@ -1,9 +1,8 @@
-const { Question,Category } = require("../models/questions");
+const {Question} = require("../models/questions");
 const express = require("express");
 const router = express.Router();
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-  
+ const Category = require('../models/categories');
+
 
 router.get('/', async (req, res) => {
     try {
@@ -73,4 +72,41 @@ router.post('/drag-and-drop', async (req, res) => {
     }
   });
 
+
+  ///assign question to category
+
+
+  router.post('/', async (req, res) => {
+    const { type, text, category: categoryId, multipleChoiceData, dragAndDropData } = req.body;
+    try {
+       const category = await Category.findById(categoryId);
+      if (!category) {
+        return res.status(404).json({ message: 'Category not found.' });
+      }
+  
+      // Create new Question document
+      const question = new Question({
+        type,
+        text,
+        category: categoryId,
+        multipleChoiceData,
+        dragAndDropData
+      });
+  
+      // Save question
+      await question.save();
+  
+      // Assign question to category
+      category.questions.push(question._id);
+      await category.save();
+  
+      res.status(201).json(question);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+  
+  
+ 
+    
   module.exports = router;

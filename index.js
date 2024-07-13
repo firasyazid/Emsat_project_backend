@@ -20,14 +20,14 @@ app.use(authJwt());
 const userRouter = require('./routes/user');
 const questionRouter = require('./routes/questions');
 const categoryRouter = require('./routes/categories');
-const testRouter = require('./routes/test');
-
+const test = require('./routes/test');
+ 
 
 app.use(`${api}/users`, userRouter);
 app.use(`${api}/questions`, questionRouter);
 app.use(`${api}/categories`, categoryRouter);
-app.use(`${api}/tests`, testRouter);
-// Database connection
+app.use(`${api}/tests`, test);
+ // Database connection
 mongoose
   .connect(process.env.CONNECTION_STRING, {
     useNewUrlParser: true,

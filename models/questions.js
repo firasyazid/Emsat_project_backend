@@ -1,13 +1,7 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
- const CategorySchema = new Schema({
-  name: {
-    type: String,
-    required: true,
-    unique: true
-  }
-});
+ 
 
  const MultipleChoiceSchema = new Schema({
   options: [String],
@@ -18,6 +12,11 @@ const Schema = mongoose.Schema;
   draggableItems: [String],
   correctSequence: [String]
 });
+
+//////
+
+
+
 
  const QuestionSchema = new Schema({
   type: {
@@ -31,11 +30,14 @@ const Schema = mongoose.Schema;
   },
   multipleChoiceData: MultipleChoiceSchema,
   dragAndDropData: DragAndDropSchema,
+
   category: {
     type: Schema.Types.ObjectId,
     ref: 'Category',
     required: true
-  }
+  },
+
+   
 });
 
  QuestionSchema.virtual('id').get(function () {
@@ -47,4 +49,4 @@ const Schema = mongoose.Schema;
 });
 
 exports.Question = mongoose.model('Question', QuestionSchema);
-exports.Category = mongoose.model('Category', CategorySchema);
+ 

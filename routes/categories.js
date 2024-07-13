@@ -1,35 +1,37 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { Category } = require("../models/questions");
+const Category = require('../models/categories');  
 
 router.post('/', async (req, res) => {
-    const { name } = req.body;
-  
-    if (!name) {
-      return res.status(400).send('Category name is required');
+  const { name, timeLimit, questions } = req.body;
+
+   if (!name || !timeLimit) {
+    return res.status(400).json({ message: 'Name and timeLimit are required fields.' });
+  }
+
+   try {
+    const category = new Category({ name, timeLimit });
+    if (questions) {
+      category.questions = questions;
     }
-  
-    try {
-      const category = new Category({ name });
-      await category.save();
-      res.status(201).send(category);
-    } catch (error) {
-      if (error.code === 11000) {
-         return res.status(400).send('Category name must be unique');
-      }
-      res.status(500).send('Server error');
-    }
-  });
+
+    await category.save();
+    res.status(201).json(category);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
 
 
 router.get('/', async (req, res) => {
-    try {
-      const categories = await Category.find();
-      res.json(categories);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  try {
+    const categories = await Category.find().populate('questions');
+    res.json(categories);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 
-  module.exports = router;
+
+module.exports = router;

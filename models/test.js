@@ -1,25 +1,23 @@
 const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const TestSchema = new mongoose.Schema({
+ const TestSchema = new Schema({
   name: {
     type: String,
-    required: true,
-    unique: true
+    required: true
   },
-  questions: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Question'
+  categories: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Category'
   }]
 });
 
-TestSchema.virtual('id').get(function () {
+ TestSchema.virtual('id').get(function () {
   return this._id.toHexString();
 });
 
 TestSchema.set('toJSON', {
   virtuals: true,
 });
- 
 
-exports.Test = mongoose.model('Test', TestSchema);
-exports.TestSchema = TestSchema;
+ module.exports = mongoose.model('Test', TestSchema);
