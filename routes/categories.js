@@ -1,15 +1,17 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const Category = require('../models/categories');  
+const Category = require("../models/categories");
 
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   const { name, timeLimit, questions } = req.body;
 
-   if (!name || !timeLimit) {
-    return res.status(400).json({ message: 'Name and timeLimit are required fields.' });
+  if (!name || !timeLimit) {
+    return res
+      .status(400)
+      .json({ message: "Name and timeLimit are required fields." });
   }
 
-   try {
+  try {
     const category = new Category({ name, timeLimit });
     if (questions) {
       category.questions = questions;
@@ -22,16 +24,13 @@ router.post('/', async (req, res) => {
   }
 });
 
-
-router.get('/', async (req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const categories = await Category.find().populate('questions');
+    const categories = await Category.find().populate("questions");
     res.json(categories);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
-
-
 
 module.exports = router;

@@ -3,22 +3,19 @@ const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const nodemailer = require('nodemailer');
-const generatePassword = require('generate-password');
-
- 
-
+const nodemailer = require("nodemailer");
+const generatePassword = require("generate-password");
 
 //// email
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: "gmail",
   auth: {
-    user: 'firasyazid4@gmail.com',  
-    pass: 'cntnhhvujdsfzhig'    
-  }
+    user: "firasyazid4@gmail.com",
+    pass: "cntnhhvujdsfzhig",
+  },
 });
 
-transporter.verify(function(error, success) {
+transporter.verify(function (error, success) {
   if (error) {
     console.log(error);
   } else {
@@ -26,13 +23,10 @@ transporter.verify(function(error, success) {
   }
 });
 
-
-
-
 router.post("/register", async (req, res) => {
   const { fullname, email, password, role, expiresAt } = req.body;
 
-  if (!password || password.trim() === '') {
+  if (!password || password.trim() === "") {
     return res.status(400).send("Password is required");
   }
 
@@ -40,20 +34,26 @@ router.post("/register", async (req, res) => {
     return res.status(400).send("Password must be at least 8 characters long");
   }
 
-  if (!role || role.trim() === '') {
+  if (!role || role.trim() === "") {
     return res.status(400).send("Role is required");
   }
 
-  const allowedRoles = ['Super Admin', 'Teacher', 'Student'];
+  const allowedRoles = ["Super Admin", "Teacher", "Student"];
   if (!allowedRoles.includes(role)) {
-    return res.status(400).send(`Role must be one of the following: ${allowedRoles.join(', ')}`);
+    return res
+      .status(400)
+      .send(`Role must be one of the following: ${allowedRoles.join(", ")}`);
   }
 
-  if (role === 'Student' && (!expiresAt || isNaN(Date.parse(expiresAt)))) {
-    return res.status(400).send("Valid expiration date is required for users with the 'Student' role");
+  if (role === "Student" && (!expiresAt || isNaN(Date.parse(expiresAt)))) {
+    return res
+      .status(400)
+      .send(
+        "Valid expiration date is required for users with the 'Student' role"
+      );
   }
 
-  const expirationDate = role === 'Student' ? new Date(expiresAt) : undefined;
+  const expirationDate = role === "Student" ? new Date(expiresAt) : undefined;
 
   let user = new User({
     fullname: fullname,
@@ -71,41 +71,70 @@ router.post("/register", async (req, res) => {
 
     // Send email to the user
     const mailOptions = {
-      from: 'your-email@gmail.com',
+      from: "your-email@gmail.com",
       to: user.email,
-      subject: 'Welcome to Your App!',
-      text: `Hello ${user.fullname},\n\n` +
-            `Your account has been successfully created!\n\n` +
-            `Username: ${user.fullname}\n` +
-            `Password: ${password}\n` +
-            (role === 'Student' ? `Expiration Date: ${expiresAt}\n\n` : '') +
-            `Thank you for joining us.`,
+      subject: "Welcome to Your Account!",
+      text:
+        `Hello ${user.fullname},\n\n` +
+        `Your account has been successfully created!\n\n` +
+        `Username: ${user.fullname}\n` +
+        `Password: ${password}\n` +
+        (role === "Student" ? `Expiration Date: ${expiresAt}\n\n` : "") +
+        `Thank you for joining us.`,
     };
-    transporter.sendMail(mailOptions, function(error, info) {
+    transporter.sendMail(mailOptions, function (error, info) {
       if (error) {
         console.log(error);
       } else {
-        console.log('Email sent: ' + info.response);
+        console.log("Email sent: " + info.response);
       }
     });
 
-    res.send(user);  
+    res.send(user);
   } catch (error) {
     console.error(error);
     res.status(400).send("The user could not be created");
   }
 });
 
-
 router.get(`/`, async (req, res) => {
   const userList = await User.find().select("-passwordHash");
 
   if (!userList) {
     res.status(500).json({ success: false });
-  } 
+  }
   res.send(userList);
-}
-);
+});
+
+
+router.get(`/last-user`, async (req, res) => {
+  const userList = await User.find().select("-passwordHash").sort({ _id: -1 });
+
+  if (!userList) {
+    res.status(500).json({ success: false });
+  }
+  res.status(200).send(userList);
+});
+
+
+// Backend route to fetch users ordered by nearest expiresAt date
+router.get(`/users-by-expiry`, async (req, res) => {
+  try {
+    const userList = await User.find()
+      .select("-passwordHash")
+      .sort({ expiresAt: 1 }); // Sort by expiresAt in ascending order (nearest first)
+
+    if (!userList || userList.length === 0) {
+      return res.status(404).json({ success: false, message: "Users not found" });
+    }
+    
+    res.status(200).json(userList);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+});
+
 
 router.post("/login", async (req, res) => {
   try {
@@ -115,7 +144,11 @@ router.post("/login", async (req, res) => {
       return res.status(400).send("User not found");
     }
 
-     if (user.role === 'Student' && user.expiresAt && new Date() > new Date(user.expiresAt)) {
+    if (
+      user.role === "Student" &&
+      user.expiresAt &&
+      new Date() > new Date(user.expiresAt)
+    ) {
       return res.status(400).send("Your account has expired");
     }
 
@@ -123,7 +156,7 @@ router.post("/login", async (req, res) => {
       const token = jwt.sign(
         {
           userId: user.id,
-           role: user.role,  
+          role: user.role,
         },
         secret,
         { expiresIn: "1d" }
@@ -134,7 +167,7 @@ router.post("/login", async (req, res) => {
         userId: user.id,
         token: token,
         fullname: user.fullname,
-        role: user.role, 
+        role: user.role,
       });
     } else {
       res.status(400).send("Password is incorrect");
@@ -147,11 +180,11 @@ router.post("/login", async (req, res) => {
 
 /// update password
 
-router.put('/update-password/:id', async (req, res) => {
+router.put("/update-password/:id", async (req, res) => {
   const { id } = req.params;
-  const {newPassword } = req.body;
+  const { newPassword } = req.body;
 
-  if (!newPassword || newPassword.trim() === '') {
+  if (!newPassword || newPassword.trim() === "") {
     return res.status(400).send("New password is required");
   }
 
@@ -163,23 +196,29 @@ router.put('/update-password/:id', async (req, res) => {
     user.passwordHash = bcrypt.hashSync(newPassword, 10);
     await user.save();
     const mailOptions = {
-      from: 'firasyazid4@gmail.com',
+      from: "firasyazid4@gmail.com",
       to: user.email,
-      subject: 'Password Reset',
-      text: `Hello ${user.fullname},\n\n` +
-            `Your password has been reset successfully.\n\n` +
-            `New Password: ${newPassword}\n\n` +
-             `Welcome again.`,
+      subject: "Password Reset",
+      text:
+        `Hello ${user.fullname},\n\n` +
+        `Your password has been reset successfully.\n\n` +
+        `New Password: ${newPassword}\n\n` +
+        `Welcome again.`,
     };
 
     // Send email
-    transporter.sendMail(mailOptions, function(error, info) {
+    transporter.sendMail(mailOptions, function (error, info) {
       if (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Failed to send email' });
+        return res.status(500).json({ message: "Failed to send email" });
       } else {
-        console.log('Email sent: ' + info.response);
-        return res.status(200).json({ message: 'Password reset successful. New password sent to the user.' });
+        console.log("Email sent: " + info.response);
+        return res
+          .status(200)
+          .json({
+            message:
+              "Password reset successful. New password sent to the user.",
+          });
       }
     });
 
@@ -189,17 +228,14 @@ router.put('/update-password/:id', async (req, res) => {
   }
 });
 
-
-
-///forget password 
-router.post('/forgot-password', async (req, res) => {
+///forget password
+router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
-
   try {
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Generate a new random password
@@ -207,57 +243,128 @@ router.post('/forgot-password', async (req, res) => {
       length: 8,
       numbers: true,
       strict: true,
-      uppercase: false
+      uppercase: false,
     });
 
-    // Hash the new password
     const passwordHash = bcrypt.hashSync(newPassword, 10);
 
-    // Update user's password hash and role in the database
     user.passwordHash = passwordHash;
-    user.role = 'Student'; // Ensure you assign a valid role here
-
-    // Save the updated user
+    user.role = "Student";
     try {
       await user.save();
     } catch (error) {
-      if (error.errors && error.errors.role && error.errors.role.kind === 'enum') {
-        // Handle specific enum validation error
-        return res.status(400).json({ message: `Invalid role value: ${user.role}` });
+      if (
+        error.errors &&
+        error.errors.role &&
+        error.errors.role.kind === "enum"
+      ) {
+        return res
+          .status(400)
+          .json({ message: `Invalid role value: ${user.role}` });
       }
-      // Handle other validation errors or general errors
       console.error(error);
-      return res.status(500).json({ message: 'Failed to update user password' });
+      return res
+        .status(500)
+        .json({ message: "Failed to update user password" });
     }
 
-    // Compose email message
     const mailOptions = {
-      from: 'firasyazid4@gmail.com',
+      from: "firasyazid4@gmail.com",
       to: user.email,
-      subject: 'Password Reset',
-      text: `Hello ${user.fullname},\n\n` +
-            `Your password has been reset successfully.\n\n` +
-            `New Password: ${newPassword}\n\n` +
-             `Welcome again.`,
+      subject: "Password Reset",
+      text:
+        `Hello ${user.fullname},\n\n` +
+        `Your password has been reset successfully.\n\n` +
+        `New Password: ${newPassword}\n\n` +
+        `Welcome again.`,
     };
 
-    // Send email
-    transporter.sendMail(mailOptions, function(error, info) {
+    transporter.sendMail(mailOptions, function (error, info) {
       if (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Failed to send email' });
+        return res.status(500).json({ message: "Failed to send email" });
       } else {
-        console.log('Email sent: ' + info.response);
-        return res.status(200).json({ message: 'Password reset successful. New password sent to the user.' });
+        console.log("Email sent: " + info.response);
+        return res
+          .status(200)
+          .json({
+            message:
+              "Password reset successful. New password sent to the user.",
+          });
       }
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Internal server error' });
+    return res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+ //delete user by id 
+
+ router.delete("/:id", async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.status(200).json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+);
+
+
+
+
+// PUT route to update user details
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { fullname, email, expiresAt, role } = req.body;
+
+   if (role && !['Super Admin', 'Teacher', 'Student'].includes(role)) {
+      return res.status(400).send({ error: 'Invalid role' });
+  }
+
+  try {
+      const user = await User.findById(id);
+      if (!user) {
+          return res.status(404).send({ error: 'User not found' });
+      }
+
+      if (fullname) user.fullname = fullname;
+      if (email) user.email = email;
+      if (expiresAt) user.expiresAt = expiresAt;
+      if (role) user.role = role;
+
+      await user.save();
+      res.send(user);
+  } catch (error) {
+      res.status(500).send({ error: 'An error occurred while updating the user' });
   }
 });
 
 
 
- 
+router.get('/search', async (req, res) => {
+  const searchTerm = req.query.q; // Use req.query.q to get the search term from the query parameters
+  if (!searchTerm) {
+      return res.status(400).send('Search term is required');
+  }
+
+  try {
+      const regex = new RegExp(searchTerm, 'i');  // 'i' makes it case-insensitive
+      const users = await User.find({ fullname: regex });
+      if (users.length === 0) {
+          return res.status(404).send('No users found');
+      }
+      res.json(users);
+  } catch (error) {
+      res.status(500).send('Server error');
+  }
+});
+
+
 module.exports = router;
