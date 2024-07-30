@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+ const Schema = mongoose.Schema;
 
- const TestSchema = new Schema({
+const TestSchema = new Schema({
   name: {
     type: String,
     required: true
@@ -12,7 +12,7 @@ const Schema = mongoose.Schema;
   }]
 });
 
- TestSchema.virtual('id').get(function () {
+TestSchema.virtual('id').get(function () {
   return this._id.toHexString();
 });
 
@@ -20,4 +20,4 @@ TestSchema.set('toJSON', {
   virtuals: true,
 });
 
- module.exports = mongoose.model('Test', TestSchema);
+module.exports = mongoose.model('Test', TestSchema);

@@ -349,13 +349,13 @@ router.put('/:id', async (req, res) => {
 
 
 router.get('/search', async (req, res) => {
-  const searchTerm = req.query.q; // Use req.query.q to get the search term from the query parameters
+  const searchTerm = req.query.q;  
   if (!searchTerm) {
       return res.status(400).send('Search term is required');
   }
 
   try {
-      const regex = new RegExp(searchTerm, 'i');  // 'i' makes it case-insensitive
+      const regex = new RegExp(searchTerm, 'i');   
       const users = await User.find({ fullname: regex });
       if (users.length === 0) {
           return res.status(404).send('No users found');
@@ -366,5 +366,128 @@ router.get('/search', async (req, res) => {
   }
 });
 
+
+
+router.get('/total', async (req, res) => {
+  try {
+    const count = await User.countDocuments(); // Directly get the count of documents
+    res.json({ count });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
+
+const getMonthName = (date) => {
+  return date.toLocaleString('default', { month: 'long' });
+};
+
+router.get('/expiration-stats', async (req, res) => {
+  try {
+    const users = await User.find({ expiresAt: { $ne: null } });
+
+    const totalUsers = users.length;
+    const monthCount = users.reduce((acc, user) => {
+      const month = getMonthName(user.expiresAt);
+      acc[month] = (acc[month] || 0) + 1;
+      return acc;
+    }, {});
+
+    const monthPercentage = Object.keys(monthCount).map(month => {
+      return {
+        month,
+        percentage: ((monthCount[month] / totalUsers) * 100).toFixed(1)
+      };
+    });
+
+    res.json(monthPercentage);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+
+router.get('/user-role-percentage', async (req, res) => {
+  try {
+      // Get total number of users
+      const totalUsers = await User.countDocuments();
+
+      // If no users are present, return 0% for each role
+      if (totalUsers === 0) {
+          return res.json({
+              "Super Admin": 0,
+              "Teacher": 0,
+              "Student": 0
+          });
+      }
+
+      // Get count of users per role
+      const roleCounts = await User.aggregate([
+          {
+              $group: {
+                  _id: "$role",
+                  count: { $sum: 1 }
+              }
+          }
+      ]);
+
+      // Create a map for role counts
+      const roleMap = roleCounts.reduce((acc, { _id, count }) => {
+          acc[_id] = count;
+          return acc;
+      }, {});
+
+      // Calculate percentages
+      const percentages = {
+          "Super Admin": ((roleMap["Super Admin"] || 0) / totalUsers) * 100,
+          "Teacher": ((roleMap["Teacher"] || 0) / totalUsers) * 100,
+          "Student": ((roleMap["Student"] || 0) / totalUsers) * 100
+      };
+
+      // Send response
+      res.json(percentages);
+
+  } catch (error) {
+      console.error('Error fetching user role percentages:', error);
+      res.status(500).send('Internal Server Error');
+  }
+});
+
+
+router.get('/user-role-count', async (req, res) => {
+  try {
+    // Get count of users per role
+    const roleCounts = await User.aggregate([
+      {
+        $group: {
+          _id: "$role",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Create a map for role counts with default values
+    const roleMap = {
+      "Super Admin": 0,
+      "Teacher": 0,
+      "Student": 0
+    };
+
+    roleCounts.forEach(({ _id, count }) => {
+      if (roleMap.hasOwnProperty(_id)) {
+        roleMap[_id] = count;
+      }
+    });
+
+    // Send response
+    res.json(roleMap);
+
+  } catch (error) {
+    console.error('Error fetching user role counts:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
 
 module.exports = router;

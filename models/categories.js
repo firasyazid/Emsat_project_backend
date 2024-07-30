@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
- const CategorySchema = new Schema({
+const CategorySchema = new Schema({
   name: {
     type: String,
     required: true
@@ -12,11 +12,11 @@ const Schema = mongoose.Schema;
   }],
   timeLimit: {
     type: Number,
-    required: true
+    default: 30
   }
 });
 
- CategorySchema.virtual('id').get(function () {
+CategorySchema.virtual('id').get(function () {
   return this._id.toHexString();
 });
 
@@ -24,4 +24,4 @@ CategorySchema.set('toJSON', {
   virtuals: true,
 });
 
- module.exports = mongoose.model('Category', CategorySchema);
+module.exports = mongoose.model('Category', CategorySchema);
