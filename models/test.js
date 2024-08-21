@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
- const Schema = mongoose.Schema;
+const Schema = mongoose.Schema;
 
 const TestSchema = new Schema({
   name: {
@@ -9,7 +9,14 @@ const TestSchema = new Schema({
   categories: [{
     type: Schema.Types.ObjectId,
     ref: 'Category'
-  }]
+  }],
+  createdAt: {
+    type: Date,
+    default: function() {
+      const currentDate = new Date();
+      return new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+    }
+  }
 });
 
 TestSchema.virtual('id').get(function () {

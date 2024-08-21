@@ -5,6 +5,36 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const generatePassword = require("generate-password");
+const multer = require("multer");
+const path = require('path');
+const fs = require('fs');
+// Configure multer for handling file uploads
+const FILE_TYPE_MAP = {
+  "image/png": "png",
+  "image/jpeg": "jpeg",
+  "image/jpg": "jpg",
+  "video/mp4": "mp4",
+  "video/quicktime": "mov",
+  "video/x-msvideo": "avi",
+};
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const isValid = FILE_TYPE_MAP[file.mimetype];
+    let uploadError = new Error("Invalid file type");
+    if (isValid) {
+      uploadError = null;
+    }
+    cb(uploadError, path.resolve(__dirname, '../public/uploads'));
+  },
+  filename: function (req, file, cb) {
+    const fileName = file.originalname.split(" ").join("-");
+    const extension = FILE_TYPE_MAP[file.mimetype];
+    cb(null, `${fileName}-${Date.now()}.${extension}`);
+  },
+});
+const uploadOptions = multer({ storage: storage });
+
 
 //// email
 const transporter = nodemailer.createTransport({
@@ -386,27 +416,35 @@ const getMonthName = (date) => {
 
 router.get('/expiration-stats', async (req, res) => {
   try {
+    // Fetch all users with a non-null expiration date
     const users = await User.find({ expiresAt: { $ne: null } });
 
+    // Get the total number of users with an expiration date
     const totalUsers = users.length;
+
+    // Count the number of users per month
     const monthCount = users.reduce((acc, user) => {
       const month = getMonthName(user.expiresAt);
       acc[month] = (acc[month] || 0) + 1;
       return acc;
     }, {});
 
-    const monthPercentage = Object.keys(monthCount).map(month => {
+    // Transform the month counts into the desired response format
+    const monthData = Object.keys(monthCount).map(month => {
       return {
         month,
-        percentage: ((monthCount[month] / totalUsers) * 100).toFixed(1)
+        count: monthCount[month]  // Change 'percentage' to 'count'
       };
     });
 
-    res.json(monthPercentage);
+    // Send the response
+    res.json(monthData);
   } catch (err) {
+    // Handle any errors
     res.status(500).send(err.message);
   }
 });
+
 
 
 router.get('/user-role-percentage', async (req, res) => {
@@ -455,39 +493,50 @@ router.get('/user-role-percentage', async (req, res) => {
   }
 });
 
-
-router.get('/user-role-count', async (req, res) => {
+///// email
+router.post('/send-email', uploadOptions.single('file'), async (req, res) => {
   try {
-    // Get count of users per role
-    const roleCounts = await User.aggregate([
-      {
-        $group: {
-          _id: "$role",
-          count: { $sum: 1 }
-        }
-      }
-    ]);
+    const { text, subject, email } = req.body;
+    const file = req.file;
+    let filePath = '';
 
-    // Create a map for role counts with default values
-    const roleMap = {
-      "Super Admin": 0,
-      "Teacher": 0,
-      "Student": 0
+    if (file) {
+      filePath = path.resolve(__dirname, '../public/uploads', file.filename);
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).send('File not found.');
+      }
+    }
+
+    const mailOptions = {
+      from: 'firasyazid4@gmail.com',
+      to: email,
+      subject: subject,
+      text: `${text}\n\nEMSAT Team`,
+      attachments: file ? [{ filename: file.originalname, path: filePath }] : []
     };
 
-    roleCounts.forEach(({ _id, count }) => {
-      if (roleMap.hasOwnProperty(_id)) {
-        roleMap[_id] = count;
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.log('Error sending email:', error);
+        return res.status(500).json({ message: 'Error sending email', error });
+      } else {
+        if (file) {
+          fs.unlink(filePath, (err) => {
+            if (err) {
+              console.error('Error removing file:', err);
+            }
+          });
+        }
+        console.log('Email sent:', info.response);
+        return res.status(200).json({ message: 'Email sent successfully' });
       }
     });
-
-    // Send response
-    res.json(roleMap);
-
   } catch (error) {
-    console.error('Error fetching user role counts:', error);
-    res.status(500).send('Internal Server Error');
+    console.error('Internal Server Error:', error);
+    res.status(500).json({ message: 'Internal Server Error', error });
   }
 });
+
+
 
 module.exports = router;

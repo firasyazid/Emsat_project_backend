@@ -3,10 +3,77 @@ const router = express.Router();
 const Test = require("../models/test");
 const Category = require("../models/categories");
 const mongoose = require('mongoose');  
-const { Question } = require('../models/questions'); // Adjust the path as needed
+const { Question } = require('../models/questions'); 
 
 
-// POST route to create a new Test document
+router.post('/:testId/submit', async (req, res) => {
+  const { testId } = req.params;
+  const { userId, answers } = req.body;
+
+  try {
+      // Find the test by its ID and populate categories and their questions
+      const test = await Test.findById(testId)
+          .populate({
+              path: 'categories',
+              populate: {
+                  path: 'questions'
+              }
+          });
+
+      if (!test) {
+          return res.status(404).json({ message: 'Test not found' });
+      }
+
+      // Log the populated test object for debugging
+      console.log('Populated Test Object:', JSON.stringify(test, null, 2));
+
+      // Define a function to validate answers
+      const validateAnswer = (question, answer) => {
+          switch (question.type) {
+              case 'singleChoice':
+                  return question.singleChoiceData.correctAnswer === answer;
+              case 'multipleChoice':
+                  return answer.sort().toString() === question.multipleChoiceData.correctAnswers.sort().toString();
+              case 'dragAndDrop':
+                  return question.dragAndDropData.correctSequence.join('') === answer.join('');
+              default:
+                  return false;
+          }
+      };
+
+      // Process user answers
+      const results = answers.map(answer => {
+          const question = test.categories.flatMap(cat => cat.questions)
+              .find(q => q._id.toString() === answer.questionId);
+
+          if (!question) {
+              return { questionId: answer.questionId, correct: false, message: 'Question not found' };
+          }
+
+          const isCorrect = validateAnswer(question, answer.answer);
+          return { questionId: answer.questionId, correct: isCorrect };
+      });
+
+      // Save results (if necessary)
+      // For example, save to a results collection or update user progress
+
+      res.status(200).json({ message: 'Test submitted successfully', results });
+  } catch (error) {
+      console.error('Error submitting test:', error);
+      res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+ 
+
+
+
+
+
+
+
+
+// POST route  
  router.post('/', async (req, res) => {
   const { name } = req.body;
 
@@ -15,14 +82,12 @@ const { Question } = require('../models/questions'); // Adjust the path as neede
   }
 
   try {
-    // Fetch all categories from the database
-    const categories = await Category.find().limit(12).lean(); // Limit to first 12 categories
-    console.log('Categories fetched:', categories); // Log fetched categories
+     const categories = await Category.find().limit(12).lean();  
+    console.log('Categories fetched:', categories); // 
 
     const newCategoryIds = [];
 
-    // Create a copy of each category with a new ID and unique name
-    for (let cat of categories) {
+     for (let cat of categories) {
       const newCategory = new Category({
         ...cat,
         _id: new mongoose.Types.ObjectId(), // Assign a new ID

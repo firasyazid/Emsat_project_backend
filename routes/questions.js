@@ -131,6 +131,59 @@ router.put('/multipleChoice/:id', async (req, res) => {
   }
 });
 
+
+////put drag and drop 
+ 
+  router.put('/dragAndDrop/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { text, dragAndDropData, category, name, validation } = req.body;
+
+    console.log('Update request received with data:', { text, dragAndDropData, category, name, validation });
+
+    // Find the existing question by ID
+    const existingQuestion = await Question.findById(id);
+    if (!existingQuestion) {
+      return res.status(404).send('Question not found');
+    }
+
+    // Create an object with only the fields that are provided
+    const updateFields = {};
+    if (text !== undefined) updateFields.text = text;
+    if (category !== undefined) updateFields.category = category;
+    if (name !== undefined) updateFields.name = name;
+    if (validation !== undefined) updateFields.validation = validation;
+
+    // Update dragAndDropData only if provided
+    if (dragAndDropData !== undefined) {
+      updateFields['dragAndDropData.draggableItems'] = dragAndDropData.draggableItems !== undefined ? dragAndDropData.draggableItems : existingQuestion.dragAndDropData.draggableItems;
+      updateFields['dragAndDropData.correctSequence'] = dragAndDropData.correctSequence !== undefined ? dragAndDropData.correctSequence : existingQuestion.dragAndDropData.correctSequence;
+    }
+
+    console.log('Update fields:', updateFields);
+
+    // Update the question with new values
+    const updatedQuestion = await Question.findByIdAndUpdate(
+      id,
+      { $set: updateFields },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedQuestion) {
+      return res.status(404).send('Question not found');
+    }
+
+    res.status(200).json(updatedQuestion);
+  } catch (error) {
+    console.error('Error updating question:', error);
+    res.status(500).send('Server error');
+  }
+});
+   
+
+
+
+ 
  
 router.get('/total', async (req, res) => {
   try {
@@ -210,8 +263,7 @@ router.post("/multiple-choice", async (req, res) => {
 ///// drag & drop
 
 router.post("/drag-and-drop", async (req, res) => {
-  const { text, draggableItems, correctSequence } = req.body;
-
+  const { text, draggableItems, correctSequence,categoryId } = req.body;
   const newQuestion = new Question({
     type: "dragAndDrop",
     text,
@@ -219,8 +271,8 @@ router.post("/drag-and-drop", async (req, res) => {
       draggableItems,
       correctSequence,
     },
+    category: categoryId,
   });
-
   try {
     const savedQuestion = await newQuestion.save();
     res.status(201).json(savedQuestion);
