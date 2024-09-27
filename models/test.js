@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { validate } = require('./categories');
 const Schema = mongoose.Schema;
 
 const TestSchema = new Schema({
@@ -15,6 +16,11 @@ const TestSchema = new Schema({
     default: function() {
       const currentDate = new Date();
       return new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+    },
+
+    validation : {
+      type:Boolean, 
+      default: false
     }
   }
 });

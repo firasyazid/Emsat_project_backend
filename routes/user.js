@@ -170,18 +170,21 @@ router.post("/login", async (req, res) => {
   try {
     const user = await User.findOne({ email: req.body.email });
     const secret = process.env.secret;
+    
     if (!user) {
-      return res.status(400).send("User not found");
+      return res.status(400).send("Email or password is wrong");
     }
 
+    // Check if the user is a student and their account has expired
     if (
       user.role === "Student" &&
       user.expiresAt &&
       new Date() > new Date(user.expiresAt)
     ) {
-      return res.status(400).send("Your account has expired");
+      return res.status(403).send("Your account has expired");
     }
 
+    // Check if the password is correct
     if (user && bcrypt.compareSync(req.body.password, user.passwordHash)) {
       const token = jwt.sign(
         {
@@ -192,19 +195,20 @@ router.post("/login", async (req, res) => {
         { expiresIn: "1d" }
       );
 
-      res.status(200).send({
+      return res.status(200).send({
         user: user.email,
         userId: user.id,
         token: token,
         fullname: user.fullname,
         role: user.role,
+        expiresAt: user.expiresAt,
       });
     } else {
-      res.status(400).send("Password is incorrect");
+      return res.status(400).send("Email or password is wrong");
     }
   } catch (error) {
     console.error(error);
-    res.status(500).send("Internal Server Error");
+    return res.status(500).send("Internal Server Error");
   }
 });
 

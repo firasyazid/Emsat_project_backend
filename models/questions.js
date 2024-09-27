@@ -13,8 +13,11 @@ const SingleChoiceSchema = new Schema({
 
 const DragAndDropSchema = new Schema({
   draggableItems: [String],
-  correctSequence: [String]
+  correctSequence: [String], 
+  correctSequenceParts: [String],
+  correctResponse: String
 });
+
 
 const TextQuestionSchema = new Schema({
   correctAnswer: String

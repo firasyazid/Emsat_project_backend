@@ -21,26 +21,32 @@ router.get('/total', async (req, res) => {
 
 
 router.post("/", async (req, res) => {
-  const { name, timeLimit, questions } = req.body;
+  const { categories } = req.body;
 
-  if (!name || !timeLimit) {
-    return res
-      .status(400)
-      .json({ message: "Name and timeLimit are required fields." });
+  if (!categories || !Array.isArray(categories)) {
+    return res.status(400).json({ message: "Categories are required and must be an array." });
   }
 
   try {
-    const category = new Category({ name, timeLimit });
-    if (questions) {
-      category.questions = questions;
+    const savedCategories = [];
+    for (const categoryData of categories) {
+      const { name, timeLimit } = categoryData;
+
+      if (!name || !timeLimit) {
+        return res.status(400).json({ message: "Name and timeLimit are required fields." });
+      }
+
+      const category = new Category({ name, timeLimit });
+      await category.save();
+      savedCategories.push(category);
     }
 
-    await category.save();
-    res.status(201).json(category);
+    res.status(201).json(savedCategories);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 });
+
 
 router.get("/", async (req, res) => {
   try {
@@ -68,7 +74,7 @@ router.get('/:id', async (req, res) => {
   try {
     const test = await Category.findById(id) ;
     if (!test) {
-      return res.status(404).json({ message: 'Test not found' });
+      return res.status(404).json({ message: 'category not found' });
     }
     res.json(test);
   } catch (err) {

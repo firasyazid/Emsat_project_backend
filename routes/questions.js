@@ -158,6 +158,9 @@ router.put('/multipleChoice/:id', async (req, res) => {
     if (dragAndDropData !== undefined) {
       updateFields['dragAndDropData.draggableItems'] = dragAndDropData.draggableItems !== undefined ? dragAndDropData.draggableItems : existingQuestion.dragAndDropData.draggableItems;
       updateFields['dragAndDropData.correctSequence'] = dragAndDropData.correctSequence !== undefined ? dragAndDropData.correctSequence : existingQuestion.dragAndDropData.correctSequence;
+      updateFields['dragAndDropData.correctSequenceParts'] = dragAndDropData.correctSequenceParts !== undefined ? dragAndDropData.correctSequenceParts : existingQuestion.dragAndDropData.correctSequenceParts;
+
+      updateFields['dragAndDropData.correctResponse'] = dragAndDropData.correctResponse !== undefined ? dragAndDropData.correctResponse : existingQuestion.dragAndDropData.correctResponse;
     }
 
     console.log('Update fields:', updateFields);
@@ -212,6 +215,14 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+router.delete('/all', async (req, res) => {
+  try {
+    const result = await Question.deleteMany({});
+    res.status(200).json({ message: 'All Question deleted successfully', result });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting Question', error });
+  }
+});
 
 
 router.get("/", async (req, res) => {
@@ -426,7 +437,24 @@ router.get('/correct-answer-indices/:id', async (req, res) => {
 
 
 
- // get total number of questions 
+router.get('/category/:categoryId', async (req, res) => {
+  const categoryId = req.params.categoryId;
+
+  try {
+    // Find the category by ID and populate the questions
+    const category = await Category.findById(categoryId).populate('questions');
+    
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    // Send the questions back to the client
+    res.json(category.questions);
+  } catch (error) {
+    console.error('Error fetching questions by category:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 
 module.exports = router;

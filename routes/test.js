@@ -82,7 +82,7 @@ router.post('/:testId/submit', async (req, res) => {
   }
 
   try {
-     const categories = await Category.find().limit(12).lean();  
+     const categories = await Category.find().limit(19).lean();  
     console.log('Categories fetched:', categories); // 
 
     const newCategoryIds = [];
@@ -225,6 +225,98 @@ router.post('/:testId/categories/:categoryId', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+router.delete('/all', async (req, res) => {
+  try {
+    const result = await Test.deleteMany({});
+    res.status(200).json({ message: 'All tests deleted successfully', result });
+  } catch (error) {
+    res.status(500).json({ message: 'Error tests Question', error });
+  }
+});
+
+
+
+////submit test 
+router.post('/submit-test/:testId', async (req, res) => {
+  const testId = req.params.testId;
+  const submittedAnswers = req.body.answers; // Expected format: [{ questionId, correctSequence / selectedOption }]
+  
+  try {
+      // Fetch the test by ID and populate categories and questions
+      const test = await Test.findById(testId)
+          .populate({
+              path: 'categories',
+              populate: {
+                  path: 'questions'
+              }
+          });
+
+      let correctAnswersCount = 0;
+      let totalQuestionsCount = 0;
+
+      // Loop through categories and questions
+      test.categories.forEach(category => {
+          if (category.questions && category.questions.length > 0) {
+              category.questions.forEach(question => {
+                  totalQuestionsCount++; // Increment total questions count
+
+                  // Find the submitted answer for this question
+                  const submittedAnswer = submittedAnswers.find(
+                      answer => answer.questionId === question._id.toString()
+                  );
+
+                  // Handle single choice
+                  if (question.type === 'singleChoice' && submittedAnswer) {
+                      const correctAnswer = question.singleChoiceData.correctAnswer.trim().toLowerCase();
+                      const userAnswer = submittedAnswer.selectedOption.trim().toLowerCase();
+
+                      if (correctAnswer === userAnswer) {
+                          correctAnswersCount++; // Increment correct answers count
+                      }
+                  }
+
+                  // Handle drag-and-drop
+                  if (question.type === 'dragAndDrop' && submittedAnswer) {
+                      const correctResponse = question.dragAndDropData.correctResponse.trim().toLowerCase();
+                      const userSequence = submittedAnswer.correctSequence.trim().toLowerCase();
+
+                      // Check if the user sequence matches the correct response
+                      if (correctResponse === userSequence) {
+                          correctAnswersCount++; // Increment correct answers count
+                      }
+                  }
+
+                  // You can add other question types here like multipleChoice or text as needed
+              });
+          }
+      });
+
+      // Calculate the score
+      if (totalQuestionsCount > 0) {
+          const scorePercentage = (correctAnswersCount / totalQuestionsCount) * 100;
+
+          // Return the result
+          res.json({
+              score: scorePercentage.toFixed(2) + '%',
+              correctAnswers: correctAnswersCount,
+              totalQuestions: totalQuestionsCount
+          });
+      } else {
+          // Handle case where no questions were found
+          res.json({
+              message: 'No questions found for this test.',
+              score: '0%',
+              correctAnswers: 0,
+              totalQuestions: 0
+          });
+      }
+  } catch (error) {
+      res.status(500).json({ message: error.message });
+  }
+});
+
+
 
 
 
