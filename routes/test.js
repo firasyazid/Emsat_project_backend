@@ -257,10 +257,10 @@ router.post('/submit-test/:testId', async (req, res) => {
 
       // Loop through categories and questions
       test.categories.forEach(category => {
-
-        if (category.name === 'Writing') {
+        if (category.name.includes('Writing')) {
           return; // Skip this category
       }
+      
           if (category.questions && category.questions.length > 0) {
               category.questions.forEach(question => {
                   totalQuestionsCount++; // Increment total questions count
