@@ -110,6 +110,7 @@ router.post("/register", async (req, res) => {
         `Username: ${user.fullname}\n` +
         `Password: ${password}\n` +
         (role === "Student" ? `Expiration Date: ${expiresAt}\n\n` : "") +
+        `Link: https://emsat-test.vercel.app/ \n` +    
         `Thank you for joining us.`,
     };
     transporter.sendMail(mailOptions, function (error, info) {
