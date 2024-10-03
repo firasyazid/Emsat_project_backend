@@ -85,15 +85,21 @@ router.post("/register", async (req, res) => {
 
   const expirationDate = role === "Student" ? new Date(expiresAt) : undefined;
 
-  let user = new User({
-    fullname: fullname,
-    email: email,
-    passwordHash: bcrypt.hashSync(password, 10),
-    role: role,
-    expiresAt: expirationDate,
-  });
-
+  // Check if the email is already associated with an existing account
   try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).send("Email is already associated with another account");
+    }
+
+    let user = new User({
+      fullname: fullname,
+      email: email,
+      passwordHash: bcrypt.hashSync(password, 10),
+      role: role,
+      expiresAt: expirationDate,
+    });
+
     user = await user.save();
     if (!user) {
       throw new Error("User could not be created");
@@ -110,9 +116,10 @@ router.post("/register", async (req, res) => {
         `Username: ${user.fullname}\n` +
         `Password: ${password}\n` +
         (role === "Student" ? `Expiration Date: ${expiresAt}\n\n` : "") +
-        `Link: https://emsat-test.vercel.app/ \n` +    
+        `Link: https://emsat-test.vercel.app/ \n` +
         `Thank you for joining us.`,
     };
+
     transporter.sendMail(mailOptions, function (error, info) {
       if (error) {
         console.log(error);
@@ -231,7 +238,7 @@ router.put("/update-password/:id", async (req, res) => {
     user.passwordHash = bcrypt.hashSync(newPassword, 10);
     await user.save();
     const mailOptions = {
-      from: "firasyazid4@gmail.com",
+      from: "emsatprcticetest@gmail.com",
       to: user.email,
       subject: "Password Reset",
       text:
@@ -304,7 +311,7 @@ router.post("/forgot-password", async (req, res) => {
     }
 
     const mailOptions = {
-      from: "firasyazid4@gmail.com",
+      from: "emsatprcticetest@gmail.com",
       to: user.email,
       subject: "Password Reset",
       text:
@@ -513,7 +520,7 @@ router.post('/send-email', uploadOptions.single('file'), async (req, res) => {
     }
 
     const mailOptions = {
-      from: 'firasyazid4@gmail.com',
+      from: 'emsatprcticetest@gmail.com',
       to: email,
       subject: subject,
       text: `${text}\n\nEMSAT Team`,
