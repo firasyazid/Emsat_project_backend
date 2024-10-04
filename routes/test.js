@@ -65,14 +65,6 @@ router.post('/:testId/submit', async (req, res) => {
 });
 
  
-
-
-
-
-
-
-
-
 // POST route  
  router.post('/', async (req, res) => {
   const { name } = req.body;
@@ -323,6 +315,53 @@ router.post('/submit-test/:testId', async (req, res) => {
 
 
  
+router.get('/:testId/single-choice-answers', async (req, res) => {
+  const { testId } = req.params;
+
+  try {
+    // Find the test by its ID and populate categories and their questions
+    const test = await Test.findById(testId)
+      .populate({
+        path: 'categories',
+        populate: {
+          path: 'questions',
+          model: 'Question'  // Assuming 'Question' is the correct model name
+        }
+      });
+
+    if (!test) {
+      return res.status(404).json({ message: 'Test not found' });
+    }
+
+    // Prepare the response data
+    const response = test.categories.map((category, categoryIndex) => {
+      // Filter only single choice questions
+      const singleChoiceQuestions = category.questions.filter(q => q.type === 'singleChoice');
+
+      return {
+        section: category.name.split(' - ')[0],  // Extract just the part before the hyphen
+        questions: singleChoiceQuestions.map((question, questionIndex) => {
+          const correctAnswerIndex = question.singleChoiceData.options.findIndex(option => option === question.singleChoiceData.correctAnswer);
+
+          // Map index to corresponding letter (A, B, C, D)
+          const answerLetter = ['A', 'B', 'C', 'D'][correctAnswerIndex];
+
+          return {
+            questionNumber: `q${questionIndex + 1}`,
+            options: question.singleChoiceData.options.map((option, idx) => `${['A', 'B', 'C', 'D'][idx]}. ${option}`),  // Show options with A, B, C, D
+            correctAnswer: answerLetter // Display the letter for the correct answer
+          };
+        })
+      };
+    });
+
+    res.status(200).json(response);
+
+  } catch (error) {
+    console.error('Error retrieving test data:', error);
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
 
 
 module.exports = router;
