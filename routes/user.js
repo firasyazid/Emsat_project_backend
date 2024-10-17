@@ -597,6 +597,7 @@ router.post("/register2", async (req, res) => {
         `Password: ${password}\n` +
         `Expiration Date: ${expirationDate.toISOString().split('T')[0]}\n\n` +
         `Link: https://emsat-test.vercel.app/ \n` +
+        `Remember, this is a free trial for 3 days. After that, you can contact us to continue using the service.`+
         `Thank you for joining us.`,
     };
 
