@@ -550,5 +550,72 @@ router.post('/send-email', uploadOptions.single('file'), async (req, res) => {
 });
 
 
+router.post("/register2", async (req, res) => {
+  const { fullname, email, password, expiresAt } = req.body;
+
+  // Default role to 'Student'
+  const role = "Student";
+
+  if (!password || password.trim() === "") {
+    return res.status(400).send("Password is required");
+  }
+
+  if (password.length < 8) {
+    return res.status(400).send("Password must be at least 8 characters long");
+  }
+
+   const expirationDate = new Date(new Date().getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days from now
+
+   try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).send("Email is already associated with another account");
+    }
+
+    let user = new User({
+      fullname: fullname,
+      email: email,
+      passwordHash: bcrypt.hashSync(password, 10),
+      role: role, // Default to Student
+      expiresAt: expirationDate, // 3 days from registration
+    });
+
+    user = await user.save();
+    if (!user) {
+      throw new Error("User could not be created");
+    }
+
+    // Send email to the user
+    const mailOptions = {
+      from: "your-email@gmail.com",
+      to: user.email,
+      subject: "Welcome to Your Account!",
+      text:
+        `Hello ${user.fullname},\n\n` +
+        `Your account has been successfully created!\n\n` +
+        `Username: ${user.fullname}\n` +
+        `Password: ${password}\n` +
+        `Expiration Date: ${expirationDate.toISOString().split('T')[0]}\n\n` +
+        `Link: https://emsat-test.vercel.app/ \n` +
+        `Thank you for joining us.`,
+    };
+
+    transporter.sendMail(mailOptions, function (error, info) {
+      if (error) {
+        console.log(error);
+      } else {
+        console.log("Email sent: " + info.response);
+      }
+    });
+
+    res.send(user);
+  } catch (error) {
+    console.error(error);
+    res.status(400).send("The user could not be created");
+  }
+});
+
+
+
 
 module.exports = router;
