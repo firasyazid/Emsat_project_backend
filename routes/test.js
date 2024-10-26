@@ -124,6 +124,23 @@ router.get("/", async (req, res) => {
 });
 
 
+router.get("/get2", async (req, res) => {
+  try {
+    // Fetch the tests from the database and sort them by _id in descending order
+    let tests = await Test.find().populate("categories").sort({ _id: -1 });
+
+    // Reverse the array to make the second one display first, etc.
+    tests = tests.reverse();
+
+    // Send the reversed array as the response
+    res.json(tests);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
+
 ///get by id 
 
 router.get('/:id', async (req, res) => {
